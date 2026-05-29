@@ -1,0 +1,10 @@
+[project]
+name = "calendar-tool"
+version = "0.1.0"
+description = "A Windows desktop voice calendar assistant for Chinese calendar commands."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools]
+packages = ["calendar_tool"]

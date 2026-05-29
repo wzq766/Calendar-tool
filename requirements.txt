@@ -1,0 +1,4 @@
+# Core app uses only Python standard library modules.
+# Optional voice input support:
+SpeechRecognition>=3.10.0
+PyAudio>=0.2.14; platform_system == "Windows"
