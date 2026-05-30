@@ -9,7 +9,7 @@
 - 右侧事件面板：支持日、月、年三种视图。
 - 语音控制面板：在支持 Web Speech API 的浏览器中可点击麦克风识别中文语音。
 - 文字输入兜底：语音不可用时可直接输入自然语言命令并解析。
-- 中文指令解析：支持添加、删除、查看三类基础意图，添加事件会先进入确认卡片。
+- 中文指令解析：优先通过服务端 DeepSeek API 解析为结构化 JSON，失败时自动回退到本地规则解析。
 - 确认卡片：新增事件前可检查并手动编辑标题、日期、开始时间、结束时间和提醒时间。
 - 本地持久化：事件保存到 `localStorage`，刷新页面后仍会恢复新增和删除结果。
 - 浏览器提醒：支持准时、提前 5/10/30 分钟、提前 1 小时提醒；浏览器通知权限允许后会到点弹出提醒。
@@ -23,6 +23,16 @@
 corepack pnpm install
 corepack pnpm dev
 ```
+
+如需启用 DeepSeek 解析，在项目根目录创建 `.env.local`：
+
+```bash
+DEEPSEEK_API_KEY=你的 DeepSeek API Key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-v4-flash
+```
+
+如果不配置 `DEEPSEEK_API_KEY`，应用仍可运行，并会自动使用本地规则解析。
 
 打开：
 
@@ -98,6 +108,7 @@ corepack pnpm test
 app/
   layout.tsx        # Next.js 根布局和页面 metadata
   page.tsx          # 首页入口
+  api/parse-command/route.ts # DeepSeek 日历指令解析 API
   globals.css       # 全局样式和主题变量
 components/
   voice-calendar.tsx # 页面主工作台
@@ -107,6 +118,8 @@ components/
   event-list.tsx     # 事件列表
   ui/                # shadcn 风格基础 UI 组件
 lib/
+  calendar-command-api.ts    # 前端解析入口，DeepSeek 失败时回退本地规则
+  deepseek-calendar-command.ts # DeepSeek 提示词、JSON 校验和命令转换
   use-speech-recognition.ts # Web Speech API 封装
   use-calendar-events.ts    # 事件状态管理
   calendar-event-storage.ts # localStorage 序列化和恢复
@@ -124,7 +137,7 @@ types/
 | 需求项 | PRD 优先级 | 当前实现状态 | 说明 |
 |---|---:|---|---|
 | 网页端日历工具 | P0 | 已实现 | 当前为 Next.js 网页端应用。 |
-| 语音添加事件 | P0 | 部分实现 | 可通过 Web Speech API 识别后解析添加，但解析规则较简单，未接入 DeepSeek ASR/LLM。 |
+| 语音添加事件 | P0 | 部分实现 | 可通过 Web Speech API 识别语音，再优先调用 DeepSeek 解析；未配置 API Key 时回退本地规则。 |
 | 语音删除事件 | P0 | 部分实现 | 支持按标题匹配删除，未提供歧义候选确认。 |
 | 语音查看事件 | P0 | 部分实现 | 支持按日期查看，查询范围和自然语言覆盖有限。 |
 | 确认环节 | P0 | 部分实现 | 新增事件前已有可编辑确认卡片；尚未实现语音播报确认和“确认/取消/修改”的语音回答。 |
@@ -136,7 +149,7 @@ types/
 | 事件详情查看 | P1 | 未实现 | 点击事件没有详情弹窗或详情面板。 |
 | 拖拽调整时间 | P1 | 未实现 | 当前事件列表不可拖拽。 |
 | 本地存储 | MVP 建议 | 已实现 | 当前事件保存到浏览器 `localStorage`，刷新后可恢复。 |
-| DeepSeek ASR/LLM | 技术建议 | 未实现 | 当前使用浏览器 Web Speech API 和本地规则解析。 |
+| DeepSeek ASR/LLM | 技术建议 | 部分实现 | 已接入 DeepSeek LLM 做文本指令解析；语音转文字仍使用浏览器 Web Speech API。 |
 | 文字输入兜底 | 容错要求 | 已实现 | 语音面板提供自然语言文本输入，浏览器不支持语音识别时仍可演示。 |
 | 多轮对话与歧义处理 | 体验要求 | 未实现 | 没有置信度判断、追问或候选项选择。 |
 
@@ -146,11 +159,11 @@ types/
 
 1. **语音确认不完整**：当前有可编辑确认卡片，但没有语音播报，也不能用语音回答确认/取消/修改。
 2. **歧义处理不足**：删除候选匹配、多轮追问和置信度判断尚未实现。
-3. **智能能力有限**：当前仍是本地规则解析，未接入 DeepSeek/LLM，复杂查询、编辑和冲突检测还不完整。
+3. **智能能力仍有限**：已接入 DeepSeek 做文本指令解析，但复杂查询、编辑、冲突检测和置信度交互还不完整。
 
 ## 建议下一步
 
-1. 扩展 `voice-parser.ts`，支持编辑事件、下周/本月查询、候选删除确认。
+1. 扩展 DeepSeek 输出协议和前端执行层，支持编辑事件、下周/本月查询、候选删除确认。
 2. 加入语音播报和语音回答确认/取消/修改。
 3. 增加事件详情弹窗，支持地点、备注、提醒时间的后续编辑。
-4. 再评估是否接入 DeepSeek 或其他 ASR/LLM 服务，提高复杂中文表达解析准确率。
+4. 评估是否接入专门 ASR 服务，提高非 Chrome/Edge 浏览器中的语音识别稳定性。

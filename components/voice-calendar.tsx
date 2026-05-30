@@ -7,7 +7,7 @@ import { VoiceControl } from '@/components/voice-control'
 import { CommandConfirmation } from '@/components/command-confirmation'
 import { useCalendarEvents } from '@/lib/use-calendar-events'
 import { useSpeechRecognition, VoiceStatus } from '@/lib/use-speech-recognition'
-import { parseVoiceCommand } from '@/lib/voice-parser'
+import { parseCalendarCommandWithDeepSeekFallback } from '@/lib/calendar-command-api'
 import { ParsedCalendarCommand, ViewMode } from '@/lib/types'
 import { useEventReminderNotifications } from '@/lib/reminder-notifications'
 import { CalendarDays } from 'lucide-react'
@@ -49,7 +49,7 @@ export function VoiceCalendar() {
   }, [recognitionStatus])
 
   // 处理语音或文字命令
-  const processCommand = useCallback((text: string) => {
+  const processCommand = useCallback(async (text: string) => {
     if (!text.trim()) {
       setVoiceStatus('error')
       setLastAction('未能识别命令内容')
@@ -57,7 +57,7 @@ export function VoiceCalendar() {
     }
 
     setVoiceStatus('processing')
-    const command = parseVoiceCommand(text, events)
+    const command = await parseCalendarCommandWithDeepSeekFallback(text, events)
 
     switch (command.action) {
       case 'add':
