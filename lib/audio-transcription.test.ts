@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import {
   buildTranscriptionFormData,
+  getTranscriptionErrorMessage,
   getTranscriptionConfig,
   parseTranscriptionResponse,
 } from './audio-transcription'
@@ -45,5 +46,12 @@ describe('audio transcription', () => {
     expect(formData.get('model')).toBe('gpt-4o-mini-transcribe')
     expect(formData.get('language')).toBe('zh')
     expect(formData.get('file')).toBeInstanceOf(File)
+  })
+
+  test('maps provider status codes to actionable messages', () => {
+    expect(getTranscriptionErrorMessage(401)).toContain('ASR_API_KEY')
+    expect(getTranscriptionErrorMessage(404)).toContain('ASR_BASE_URL')
+    expect(getTranscriptionErrorMessage(429)).toContain('额度')
+    expect(getTranscriptionErrorMessage(500)).toContain('ASR 服务')
   })
 })

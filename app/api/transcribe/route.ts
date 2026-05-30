@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import {
   buildTranscriptionFormData,
+  getTranscriptionErrorMessage,
   getTranscriptionConfig,
   parseTranscriptionResponse,
 } from '@/lib/audio-transcription'
@@ -44,8 +45,10 @@ export async function POST(request: NextRequest) {
   })
 
   if (!response.ok) {
+    const message = getTranscriptionErrorMessage(response.status)
+
     return NextResponse.json(
-      { error: 'ASR request failed', status: response.status },
+      { error: 'ASR request failed', message, status: response.status },
       { status: 502 }
     )
   }

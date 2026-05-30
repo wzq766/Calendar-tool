@@ -69,9 +69,11 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
             })
 
             if (!response.ok) {
+              const result = await response.json().catch(() => null) as { message?: string } | null
+
               throw new Error(response.status === 503
                 ? '未配置 ASR_API_KEY 或 OPENAI_API_KEY，无法使用大模型语音转文字。'
-                : '大模型语音转文字失败，请重试或使用文字输入。')
+                : result?.message || '大模型语音转文字失败，请重试或使用文字输入。')
             }
 
             const result = await response.json() as { text?: string }
