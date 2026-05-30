@@ -164,12 +164,26 @@ function parseTime(text: string): string | null {
 
 function stripDateTimeWords(text: string): string {
   return text
+    .replace(/提前(\d{1,3}|[零一二两三四五六七八九十]{1,3})(分钟|小时)提醒/g, '')
     .replace(/今天|明天|后天|大后天|下周[一二三四五六日天]|这周[一二三四五六日天]|周[一二三四五六日天]|星期[一二三四五六日天]/g, '')
     .replace(/\d{1,2}月\d{1,2}[日号]/g, '')
     .replace(/\d{1,2}[日号]/g, '')
     .replace(/(凌晨|早上|上午|中午|下午|傍晚|晚上|夜里)?\d{1,2}[点:：](半|\d{1,2}分?)?/g, '')
     .replace(/(凌晨|早上|上午|中午|下午|傍晚|晚上|夜里)?[零一二两三四五六七八九十]{1,3}点(半|[零一二两三四五六七八九十]{1,3}分?)?/g, '')
     .replace(/早上|上午|中午|下午|傍晚|晚上|夜里|凌晨/g, '')
+}
+
+function parseReminderBeforeMinutes(text: string): number | undefined {
+  const reminderMatch = text.match(/提前(\d{1,3}|[零一二两三四五六七八九十]{1,3})(分钟|小时)提醒/)
+  if (!reminderMatch) return undefined
+
+  const amount = /^\d+$/.test(reminderMatch[1])
+    ? parseInt(reminderMatch[1], 10)
+    : cnToNumber(reminderMatch[1])
+  const unit = reminderMatch[2]
+
+  if (!amount) return undefined
+  return unit === '小时' ? amount * 60 : amount
 }
 
 function parseTitle(text: string): string {
@@ -231,6 +245,7 @@ export function parseVoiceCommand(text: string, existingEvents: CalendarEvent[])
     const date = parseChineseDate(cleanText) || new Date()
     const time = parseTime(cleanText) || '09:00'
     const title = parseTitle(cleanText)
+    const remindBeforeMinutes = parseReminderBeforeMinutes(cleanText)
 
     return {
       action: 'add',
@@ -238,6 +253,7 @@ export function parseVoiceCommand(text: string, existingEvents: CalendarEvent[])
       title: title || '新事件',
       date,
       time,
+      remindBeforeMinutes,
     }
   }
 
@@ -246,6 +262,7 @@ export function parseVoiceCommand(text: string, existingEvents: CalendarEvent[])
   if (date) {
     const time = parseTime(cleanText)
     const title = parseTitle(cleanText)
+    const remindBeforeMinutes = parseReminderBeforeMinutes(cleanText)
 
     if (title) {
       return {
@@ -254,6 +271,7 @@ export function parseVoiceCommand(text: string, existingEvents: CalendarEvent[])
         title,
         date,
         time: time || '09:00',
+        remindBeforeMinutes,
       }
     }
   }

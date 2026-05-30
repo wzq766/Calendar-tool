@@ -6,6 +6,8 @@ export interface CalendarEvent {
   endTime?: string
   description?: string
   color?: string
+  remindBeforeMinutes?: number
+  remindAt?: Date
 }
 
 export type ViewMode = 'day' | 'month' | 'year'
@@ -18,4 +20,5 @@ export interface ParsedCalendarCommand {
   time?: string
   endTime?: string
   description?: string
+  remindBeforeMinutes?: number
 }

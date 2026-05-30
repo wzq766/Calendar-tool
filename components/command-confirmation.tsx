@@ -5,11 +5,24 @@ import { CalendarCheck, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ParsedCalendarCommand } from '@/lib/types'
 
 interface CommandConfirmationProps {
   command: ParsedCalendarCommand
-  onConfirm: (event: { title: string; date: Date; time: string; endTime?: string }) => void
+  onConfirm: (event: {
+    title: string
+    date: Date
+    time: string
+    endTime?: string
+    remindBeforeMinutes?: number
+  }) => void
   onCancel: () => void
 }
 
@@ -38,6 +51,9 @@ export function CommandConfirmation({ command, onConfirm, onCancel }: CommandCon
   const [dateValue, setDateValue] = useState(toDateInputValue(command.date))
   const [time, setTime] = useState(initialTime)
   const [endTime, setEndTime] = useState(command.endTime || addOneHour(initialTime))
+  const [reminder, setReminder] = useState(
+    command.remindBeforeMinutes === undefined ? 'none' : command.remindBeforeMinutes.toString()
+  )
 
   useEffect(() => {
     const nextTime = command.time || '09:00'
@@ -45,6 +61,9 @@ export function CommandConfirmation({ command, onConfirm, onCancel }: CommandCon
     setDateValue(toDateInputValue(command.date))
     setTime(nextTime)
     setEndTime(command.endTime || addOneHour(nextTime))
+    setReminder(
+      command.remindBeforeMinutes === undefined ? 'none' : command.remindBeforeMinutes.toString()
+    )
   }, [command])
 
   const canConfirm = useMemo(() => title.trim() && dateValue && time, [dateValue, time, title])
@@ -104,6 +123,23 @@ export function CommandConfirmation({ command, onConfirm, onCancel }: CommandCon
                 />
               </label>
             </div>
+
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-foreground">提醒</span>
+              <Select value={reminder} onValueChange={setReminder}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择提醒时间" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">不提醒</SelectItem>
+                  <SelectItem value="0">准时提醒</SelectItem>
+                  <SelectItem value="5">提前 5 分钟</SelectItem>
+                  <SelectItem value="10">提前 10 分钟</SelectItem>
+                  <SelectItem value="30">提前 30 分钟</SelectItem>
+                  <SelectItem value="60">提前 1 小时</SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -115,6 +151,7 @@ export function CommandConfirmation({ command, onConfirm, onCancel }: CommandCon
                   date: toDateFromInput(dateValue),
                   time,
                   endTime,
+                  remindBeforeMinutes: reminder === 'none' ? undefined : Number(reminder),
                 })
               }}
             >

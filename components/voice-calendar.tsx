@@ -9,6 +9,7 @@ import { useCalendarEvents } from '@/lib/use-calendar-events'
 import { useSpeechRecognition, VoiceStatus } from '@/lib/use-speech-recognition'
 import { parseVoiceCommand } from '@/lib/voice-parser'
 import { ParsedCalendarCommand, ViewMode } from '@/lib/types'
+import { useEventReminderNotifications } from '@/lib/reminder-notifications'
 import { CalendarDays } from 'lucide-react'
 
 export function VoiceCalendar() {
@@ -28,6 +29,8 @@ export function VoiceCalendar() {
     getEventsForMonth,
     getEventsForYear,
   } = useCalendarEvents()
+
+  useEventReminderNotifications(events)
 
   const {
     status: recognitionStatus,
@@ -125,7 +128,22 @@ export function VoiceCalendar() {
     }
   }, [recognitionStatus, transcript, processCommand])
 
-  const handleConfirmEvent = (event: { title: string; date: Date; time: string; endTime?: string }) => {
+  const handleConfirmEvent = async (event: {
+    title: string
+    date: Date
+    time: string
+    endTime?: string
+    remindBeforeMinutes?: number
+  }) => {
+    if (
+      event.remindBeforeMinutes !== undefined &&
+      typeof window !== 'undefined' &&
+      'Notification' in window &&
+      Notification.permission === 'default'
+    ) {
+      await Notification.requestPermission()
+    }
+
     const newEvent = addEvent(event)
     setPendingCommand(null)
     setSelectedDate(event.date)

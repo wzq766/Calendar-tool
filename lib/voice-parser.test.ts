@@ -53,4 +53,15 @@ describe('parseVoiceCommand', () => {
     })
     expect(localDateKey(command.date)).toBe('2026-05-31')
   })
+
+  test('parses reminder lead time from add commands', () => {
+    const command = parseVoiceCommand('明天下午3点开会提前30分钟提醒', [])
+
+    expect(command).toMatchObject({
+      action: 'add',
+      title: '开会',
+      time: '15:00',
+      remindBeforeMinutes: 30,
+    })
+  })
 })

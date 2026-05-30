@@ -3,7 +3,7 @@
 import { CalendarEvent } from '@/lib/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { Trash2 } from 'lucide-react'
+import { Bell, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface EventListProps {
@@ -24,6 +24,12 @@ export function EventList({ events, onDeleteEvent, title, emptyMessage }: EventL
   const formatDate = (date: Date) => {
     const d = new Date(date)
     return `${d.getMonth() + 1}月${d.getDate()}日`
+  }
+
+  const formatReminder = (minutes: number) => {
+    if (minutes === 0) return '准时提醒'
+    if (minutes >= 60 && minutes % 60 === 0) return `提前 ${minutes / 60} 小时`
+    return `提前 ${minutes} 分钟`
   }
 
   return (
@@ -55,6 +61,12 @@ export function EventList({ events, onDeleteEvent, title, emptyMessage }: EventL
                     <p className="text-sm text-muted-foreground mt-1">
                       {formatDate(event.date)} · {formatTime(event.time, event.endTime)}
                     </p>
+                    {event.remindBeforeMinutes !== undefined && (
+                      <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Bell className="h-3.5 w-3.5" />
+                        {formatReminder(event.remindBeforeMinutes)}
+                      </p>
+                    )}
                     {event.description && (
                       <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                         {event.description}
