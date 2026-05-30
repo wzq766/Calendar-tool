@@ -93,7 +93,7 @@ export function VoiceControl({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="font-medium text-foreground">
-              {isSupported ? config.label : '语音功能不可用'}
+              {isSupported ? config.label : '录音功能不可用'}
             </h3>
             {status === 'listening' && (
               <span className="flex gap-1">
@@ -126,7 +126,7 @@ export function VoiceControl({
             <p className="text-sm text-muted-foreground mt-1">
               {isSupported
                 ? '试试说："添加明天下午3点开会" 或 "查看今天的安排"'
-                : '当前浏览器不支持语音识别，可使用下方文字输入继续演示。'}
+                : '当前浏览器不支持录音上传，可使用下方文字输入继续演示。'}
             </p>
           )}
         </div>
