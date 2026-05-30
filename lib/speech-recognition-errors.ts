@@ -9,7 +9,7 @@ export function getSpeechRecognitionErrorMessage(errorCode: string): string {
     case 'service-not-allowed':
       return '浏览器语音识别服务不可用。请使用 Chrome 或 Edge，并确认当前页面为 localhost 或 HTTPS。'
     case 'network':
-      return '语音识别网络异常，请检查网络后重试。'
+      return '浏览器语音识别服务网络不可达。可换用 Edge/Chrome 或调整网络环境；也可以直接使用下方文字输入继续让 DeepSeek 解析日程。'
     case 'aborted':
       return '语音识别已中断，请重新点击麦克风。'
     case 'language-not-supported':

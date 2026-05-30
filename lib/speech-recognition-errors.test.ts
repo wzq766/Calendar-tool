@@ -9,7 +9,8 @@ describe('speech recognition errors', () => {
   })
 
   test('keeps a helpful fallback for unknown browser error codes', () => {
-    expect(getSpeechRecognitionErrorMessage('network')).toBe('语音识别网络异常，请检查网络后重试。')
+    expect(getSpeechRecognitionErrorMessage('network')).toContain('浏览器语音识别服务')
+    expect(getSpeechRecognitionErrorMessage('network')).toContain('文字输入')
     expect(getSpeechRecognitionErrorMessage('custom-error')).toBe('语音识别错误: custom-error')
   })
 })
