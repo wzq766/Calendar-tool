@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { getSpeechRecognitionErrorMessage } from './speech-recognition-errors'
 
 export type VoiceStatus = 'idle' | 'listening' | 'processing' | 'success' | 'error'
 
@@ -49,7 +50,7 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
 
         recognition.onerror = (event) => {
           setStatus('error')
-          setError(event.error === 'no-speech' ? '未检测到语音，请重试' : `语音识别错误: ${event.error}`)
+          setError(getSpeechRecognitionErrorMessage(event.error))
         }
 
         recognition.onend = () => {
