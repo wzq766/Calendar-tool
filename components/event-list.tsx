@@ -9,11 +9,12 @@ import { cn } from '@/lib/utils'
 interface EventListProps {
   events: CalendarEvent[]
   onDeleteEvent: (eventId: string) => void
+  onEventClick?: (event: CalendarEvent) => void
   title: string
   emptyMessage: string
 }
 
-export function EventList({ events, onDeleteEvent, title, emptyMessage }: EventListProps) {
+export function EventList({ events, onDeleteEvent, onEventClick, title, emptyMessage }: EventListProps) {
   const formatTime = (time: string, endTime?: string) => {
     if (endTime) {
       return `${time} - ${endTime}`
@@ -46,9 +47,11 @@ export function EventList({ events, onDeleteEvent, title, emptyMessage }: EventL
             {events.map(event => (
               <div
                 key={event.id}
+                onClick={() => onEventClick?.(event)}
                 className={cn(
                   'group relative p-4 rounded-xl border border-border bg-card',
                   'hover:shadow-md transition-all duration-200',
+                  onEventClick && 'cursor-pointer',
                 )}
               >
                 <div className="flex items-start gap-3">
@@ -76,7 +79,7 @@ export function EventList({ events, onDeleteEvent, title, emptyMessage }: EventL
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => onDeleteEvent(event.id)}
+                    onClick={(e) => { e.stopPropagation(); onDeleteEvent(event.id) }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
                   >
                     <Trash2 className="h-4 w-4" />

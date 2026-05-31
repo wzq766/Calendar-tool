@@ -12,6 +12,7 @@ interface VoiceControlProps {
   transcript: string
   error: string | null
   isSupported: boolean
+  isSpeaking?: boolean
   onStartListening: () => void
   onStopListening: () => void
   onSubmitText: (text: string) => void
@@ -51,6 +52,7 @@ export function VoiceControl({
   transcript,
   error,
   isSupported,
+  isSpeaking,
   onStartListening,
   onStopListening,
   onSubmitText,
@@ -93,15 +95,20 @@ export function VoiceControl({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="font-medium text-foreground">
-              {isSupported ? config.label : '录音功能不可用'}
+              {isSupported
+                ? (status === 'listening' && isSpeaking ? '检测到语音...' : config.label)
+                : '录音功能不可用'}
             </h3>
             {status === 'listening' && (
               <span className="flex gap-1">
                 {[0, 1, 2].map(i => (
                   <span
                     key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce"
-                    style={{ animationDelay: `${i * 0.15}s` }}
+                    className={cn(
+                      'w-1.5 h-1.5 rounded-full bg-red-500',
+                      isSpeaking ? 'animate-bounce' : 'opacity-40',
+                    )}
+                    style={{ animationDelay: `${i * 0.15}s`, animationDuration: isSpeaking ? '0.6s' : '2s' }}
                   />
                 ))}
               </span>
@@ -118,8 +125,8 @@ export function VoiceControl({
             <p className="text-sm text-destructive mt-2">{error}</p>
           )}
 
-          {lastAction && status === 'success' && (
-            <p className="text-sm text-green-600 mt-2">{lastAction}</p>
+          {lastAction && (status === 'success' || status === 'error') && (
+            <p className={cn('text-sm mt-2', status === 'success' ? 'text-green-600' : 'text-destructive')}>{lastAction}</p>
           )}
 
           {status === 'idle' && !transcript && (

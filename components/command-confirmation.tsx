@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarCheck, X } from 'lucide-react'
+import { CalendarCheck, X, AlertTriangle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,10 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ParsedCalendarCommand } from '@/lib/types'
+import { ParsedCalendarCommand, CalendarEvent } from '@/lib/types'
+import { detectConflicts, ConflictInfo, suggestFreeTime } from '@/lib/calendar-conflict'
 
 interface CommandConfirmationProps {
   command: ParsedCalendarCommand
+  existingEvents: CalendarEvent[]
   onConfirm: (event: {
     title: string
     date: Date
@@ -45,7 +48,7 @@ function addOneHour(time: string): string {
   return `${((hour + 1) % 24).toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
 }
 
-export function CommandConfirmation({ command, onConfirm, onCancel }: CommandConfirmationProps) {
+export function CommandConfirmation({ command, existingEvents, onConfirm, onCancel }: CommandConfirmationProps) {
   const initialTime = command.time || '09:00'
   const [title, setTitle] = useState(command.title || '新事件')
   const [dateValue, setDateValue] = useState(toDateInputValue(command.date))
@@ -68,12 +71,39 @@ export function CommandConfirmation({ command, onConfirm, onCancel }: CommandCon
 
   const canConfirm = useMemo(() => title.trim() && dateValue && time, [dateValue, time, title])
 
+  const conflicts: ConflictInfo[] = useMemo(() => {
+    if (!dateValue || !time) return []
+    return detectConflicts(toDateFromInput(dateValue), time, endTime, undefined, existingEvents)
+  }, [dateValue, time, endTime, existingEvents])
+
+  const suggestedTime = useMemo(() => {
+    const d = toDateFromInput(dateValue)
+    return suggestFreeTime(d, existingEvents)
+  }, [dateValue, existingEvents])
+
   if (command.action !== 'add') {
     return null
   }
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      {conflicts.length > 0 && (
+        <div className={cn(
+          'flex items-start gap-2 mb-4 p-3 rounded-lg text-sm',
+          conflicts.some(c => c.overlap === 'full') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200',
+        )}>
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">
+              {conflicts.some(c => c.overlap === 'full') ? '时间冲突' : '时间部分重叠'}
+            </p>
+            <p className="mt-0.5">
+              {conflicts.map(c => `"${c.event.title}"(${c.event.time}${c.event.endTime ? '-' + c.event.endTime : ''})`).join('、')}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
           <CalendarCheck className="h-5 w-5 text-primary" />
@@ -123,6 +153,16 @@ export function CommandConfirmation({ command, onConfirm, onCancel }: CommandCon
                 />
               </label>
             </div>
+
+            {conflicts.length > 0 && suggestedTime !== time && (
+              <button
+                type="button"
+                onClick={() => { setTime(suggestedTime); setEndTime(addOneHour(suggestedTime)) }}
+                className="text-xs text-primary hover:text-primary/80 transition-colors text-left"
+              >
+                💡 建议改为 {suggestedTime}（当天首个空闲时段）
+              </button>
+            )}
 
             <label className="grid gap-1.5 text-sm">
               <span className="font-medium text-foreground">提醒</span>
