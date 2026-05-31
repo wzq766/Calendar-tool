@@ -15,10 +15,10 @@ function todayKey(): string {
   ].join('-')
 }
 
-export async function parseCalendarCommandWithDeepSeekFallback(
+export async function parseCalendarCommandsWithDeepSeekFallback(
   text: string,
   existingEvents: CalendarEvent[]
-): Promise<ParsedCalendarCommand> {
+): Promise<ParsedCalendarCommand[]> {
   try {
     const response = await fetch('/api/parse-command', {
       method: 'POST',
@@ -34,13 +34,23 @@ export async function parseCalendarCommandWithDeepSeekFallback(
       throw new Error(`DeepSeek parse failed: ${response.status}`)
     }
 
-    const body = await response.json() as { command?: DeepSeekCalendarCommand }
-    if (!body.command) {
-      throw new Error('DeepSeek parse returned no command')
+    const body = await response.json() as { commands?: DeepSeekCalendarCommand[] }
+    if (!body.commands?.length) {
+      throw new Error('DeepSeek parse returned no commands')
     }
 
-    return toParsedCalendarCommand(body.command, text)
+    return body.commands.map(cmd => toParsedCalendarCommand(cmd, text))
   } catch {
-    return parseVoiceCommand(text, existingEvents)
+    const fallback = parseVoiceCommand(text, existingEvents)
+    return [fallback]
   }
+}
+
+/** 保留旧签名兼容单事件场景 */
+export async function parseCalendarCommandWithDeepSeekFallback(
+  text: string,
+  existingEvents: CalendarEvent[]
+): Promise<ParsedCalendarCommand> {
+  const commands = await parseCalendarCommandsWithDeepSeekFallback(text, existingEvents)
+  return commands[0]
 }

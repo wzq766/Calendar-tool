@@ -10,10 +10,10 @@ export interface CalendarEvent {
   remindAt?: Date
 }
 
-export type ViewMode = 'day' | 'month' | 'year'
+export type ViewMode = 'day' | 'week' | 'month' | 'year'
 
 export interface ParsedCalendarCommand {
-  action: 'add' | 'delete' | 'query' | 'unknown'
+  action: 'add' | 'delete' | 'query' | 'edit' | 'unknown'
   originalText: string
   title?: string
   date?: Date
@@ -21,4 +21,10 @@ export interface ParsedCalendarCommand {
   endTime?: string
   description?: string
   remindBeforeMinutes?: number
+  /** edit 专用：要修改的事件标题（用于匹配） */
+  matchedEventId?: string
+  newTitle?: string
+  newDate?: Date
+  newTime?: string
+  newEndTime?: string
 }

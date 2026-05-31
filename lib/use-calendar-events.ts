@@ -105,6 +105,24 @@ export function useCalendarEvents() {
     return null
   }, [events])
 
+  const updateEvent = useCallback((eventId: string, updates: Partial<Omit<CalendarEvent, 'id'>>): CalendarEvent | null => {
+    let updated: CalendarEvent | null = null
+    setEvents(prev => prev.map(e => {
+      if (e.id !== eventId) return e
+      const merged = { ...e, ...updates }
+      if (updates.date !== undefined || updates.time !== undefined || updates.remindBeforeMinutes !== undefined) {
+        merged.remindAt = calculateReminderAt({
+          date: merged.date,
+          time: merged.time,
+          remindBeforeMinutes: merged.remindBeforeMinutes,
+        })
+      }
+      updated = merged
+      return merged
+    }))
+    return updated
+  }, [])
+
   const getEventsForDate = useCallback((date: Date): CalendarEvent[] => {
     return events.filter(e => {
       const eventDate = new Date(e.date)
@@ -143,6 +161,7 @@ export function useCalendarEvents() {
     addEvent,
     deleteEvent,
     deleteEventByTitle,
+    updateEvent,
     getEventsForDate,
     getEventsForMonth,
     getEventsForYear,
