@@ -1,5 +1,7 @@
 # 语音日历 — 用自然语言管理日程的智能日历工具
 
+📺 **演示视频**：[https://www.bilibili.com/video/BV1tLVQ6cEdR/](https://www.bilibili.com/video/BV1tLVQ6cEdR/)
+
 **语音日历** 是一款以自然语言交互为核心的网页端日历管理工具。你只需要像跟助理说话一样——说出你想安排、修改或查询的日程，系统就能自动理解并执行。不再需要逐字段填写表单，也不再需要记住精确的事件名称。
 
 <p align="center">
