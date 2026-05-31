@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 
 import {
   buildDeepSeekCalendarMessages,
-  parseDeepSeekCalendarContent,
+  parseDeepSeekCalendarCommands,
 } from '@/lib/deepseek-calendar-command'
 
 export const runtime = 'nodejs'
+
+const execFileAsync = promisify(execFile)
 
 interface ParseCommandRequest {
   text?: unknown
@@ -45,44 +49,60 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'text is required' }, { status: 400 })
   }
 
-  const response = await fetch(`${deepSeekBaseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: deepSeekModel,
-      messages: buildDeepSeekCalendarMessages({
-        text,
-        referenceDate: referenceDate || new Date().toISOString().slice(0, 10),
-        existingEvents,
-      }),
-      response_format: { type: 'json_object' },
-      temperature: 0,
+  const requestBody = JSON.stringify({
+    model: deepSeekModel,
+    messages: buildDeepSeekCalendarMessages({
+      text,
+      referenceDate: referenceDate || new Date().toISOString().slice(0, 10),
+      existingEvents,
     }),
+    response_format: { type: 'json_object' },
+    temperature: 0,
   })
 
-  if (!response.ok) {
+  const args = [
+    '-s', '-w', '\n__HTTP_STATUS__:%{http_code}',
+    '--connect-timeout', '10', '--max-time', '30',
+    '-X', 'POST',
+    '-H', `Authorization: Bearer ${apiKey}`,
+    '-H', 'Content-Type: application/json',
+    '-d', requestBody,
+    `${deepSeekBaseUrl}/chat/completions`,
+  ]
+
+  const { stdout } = await execFileAsync('curl', args, {
+    maxBuffer: 1024 * 1024,
+    timeout: 35000,
+  })
+
+  const statusMarker = stdout.lastIndexOf('__HTTP_STATUS__:')
+  const responseBody = stdout.slice(0, statusMarker).trim()
+  const statusStr = stdout.slice(statusMarker + '__HTTP_STATUS__:'.length).trim()
+  const httpStatus = parseInt(statusStr, 10) || 502
+
+  if (!(httpStatus >= 200 && httpStatus < 300)) {
     return NextResponse.json(
-      { error: 'DeepSeek request failed', status: response.status },
+      { error: 'DeepSeek request failed', status: httpStatus },
       { status: 502 }
     )
   }
 
-  const result = await response.json() as {
-    choices?: Array<{ message?: { content?: string } }>
+  let result: { choices?: Array<{ message?: { content?: string } }> }
+  try {
+    result = JSON.parse(responseBody)
+  } catch {
+    return NextResponse.json({ error: 'DeepSeek returned invalid JSON' }, { status: 502 })
   }
-  const content = result.choices?.[0]?.message?.content
 
+  const content = result.choices?.[0]?.message?.content
   if (!content) {
     return NextResponse.json({ error: 'DeepSeek returned empty content' }, { status: 502 })
   }
 
-  const command = parseDeepSeekCalendarContent(content)
-  if (!command) {
+  const commands = parseDeepSeekCalendarCommands(content)
+  if (commands.length === 0) {
     return NextResponse.json({ error: 'DeepSeek returned invalid JSON' }, { status: 502 })
   }
 
-  return NextResponse.json({ command })
+  return NextResponse.json({ commands })
 }

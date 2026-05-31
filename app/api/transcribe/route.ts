@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import { writeFile, unlink } from 'fs/promises'
+import { tmpdir } from 'os'
+import { randomBytes } from 'crypto'
+import { join } from 'path'
 
 import {
   buildTranscriptionFormData,
@@ -22,37 +26,48 @@ function extensionForMimeType(type: string) {
   return 'webm'
 }
 
+/** POST JSON via curl, writing body to temp file to avoid E2BIG on large payloads. */
 async function curlJsonPost(
   url: string,
   headers: Record<string, string>,
   body: string
 ): Promise<{ status: number; body: unknown }> {
-  const args = ['-s', '-w', '\n__HTTP_STATUS__:%{http_code}', '--connect-timeout', '10', '--max-time', '60']
-  args.push('-X', 'POST')
-  for (const [k, v] of Object.entries(headers)) {
-    args.push('-H', `${k}: ${v}`)
-  }
-  args.push('-d', body)
-  args.push(url)
+  const tmpFile = join(tmpdir(), `asr_body_${randomBytes(6).toString('hex')}.json`)
+  await writeFile(tmpFile, body, 'utf-8')
 
-  const { stdout } = await execFileAsync('curl', args, {
-    maxBuffer: 10 * 1024 * 1024,
-    timeout: 65000,
-  })
-
-  const statusMarker = stdout.lastIndexOf('__HTTP_STATUS__:')
-  const responseBody = stdout.slice(0, statusMarker).trim()
-  const statusStr = stdout.slice(statusMarker + '__HTTP_STATUS__:'.length).trim()
-  const status = parseInt(statusStr, 10) || 502
-
-  let parsed: unknown
   try {
-    parsed = JSON.parse(responseBody)
-  } catch {
-    parsed = { raw: responseBody }
-  }
+    const args = [
+      '-s', '-w', '\n__HTTP_STATUS__:%{http_code}',
+      '--connect-timeout', '10', '--max-time', '60',
+      '-X', 'POST',
+      '--data-binary', `@${tmpFile}`,
+    ]
+    for (const [k, v] of Object.entries(headers)) {
+      args.push('-H', `${k}: ${v}`)
+    }
+    args.push(url)
 
-  return { status, body: parsed }
+    const { stdout } = await execFileAsync('curl', args, {
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 65000,
+    })
+
+    const statusMarker = stdout.lastIndexOf('__HTTP_STATUS__:')
+    const responseBody = stdout.slice(0, statusMarker).trim()
+    const statusStr = stdout.slice(statusMarker + '__HTTP_STATUS__:'.length).trim()
+    const status = parseInt(statusStr, 10) || 502
+
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(responseBody)
+    } catch {
+      parsed = { raw: responseBody }
+    }
+
+    return { status, body: parsed }
+  } finally {
+    unlink(tmpFile).catch(() => {})
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -102,28 +117,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ text })
   }
 
-  // OpenAI path — use multipart form via curl
-  const filename = `/tmp/asr_upload_${Date.now()}.${extensionForMimeType(audio.type)}`
-  await audio.arrayBuffer().then(buf => require('fs').promises.writeFile(filename, Buffer.from(buf)))
-
-  const args = [
-    '-s', '-w', '\n__HTTP_STATUS__:%{http_code}',
-    '--connect-timeout', '10', '--max-time', '60',
-    '-X', 'POST',
-    '-H', `Authorization: Bearer ${apiKey}`,
-    '-F', `file=@${filename};type=${audio.type || 'audio/webm'}`,
-    '-F', `model=${model}`,
-    '-F', 'language=zh',
-    `${baseUrl}/audio/transcriptions`,
-  ]
+  // OpenAI path — multipart form via curl
+  const filename = join(tmpdir(), `asr_upload_${Date.now()}.${extensionForMimeType(audio.type)}`)
+  await audio.arrayBuffer().then(buf => writeFile(filename, Buffer.from(buf)))
 
   try {
+    const args = [
+      '-s', '-w', '\n__HTTP_STATUS__:%{http_code}',
+      '--connect-timeout', '10', '--max-time', '60',
+      '-X', 'POST',
+      '-H', `Authorization: Bearer ${apiKey}`,
+      '-F', `file=@${filename};type=${audio.type || 'audio/webm'}`,
+      '-F', `model=${model}`,
+      '-F', 'language=zh',
+      `${baseUrl}/audio/transcriptions`,
+    ]
+
     const { stdout } = await execFileAsync('curl', args, {
       maxBuffer: 10 * 1024 * 1024,
       timeout: 65000,
     })
-
-    require('fs').promises.unlink(filename).catch(() => {})
 
     const statusMarker = stdout.lastIndexOf('__HTTP_STATUS__:')
     const responseBody = stdout.slice(0, statusMarker).trim()
@@ -151,6 +164,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ text })
   } finally {
-    require('fs').promises.unlink(filename).catch(() => {})
+    unlink(filename).catch(() => {})
   }
 }
