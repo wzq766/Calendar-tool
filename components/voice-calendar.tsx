@@ -108,12 +108,28 @@ export function VoiceCalendar() {
         setPendingCommand(null)
         setCandidates([])
         if (command.title) {
-          const deleted = deleteEventByTitle(command.title)
-          if (deleted) {
+          // 优先在同一天匹配，避免跨天误删
+          const candidates = command.date
+            ? events.filter(e => {
+                const ed = new Date(e.date)
+                const cd = command.date!
+                return ed.getFullYear() === cd.getFullYear() &&
+                  ed.getMonth() === cd.getMonth() &&
+                  ed.getDate() === cd.getDate()
+              })
+            : events
+
+          const matched = candidates.find(e =>
+            e.title.toLowerCase().includes(command.title!.toLowerCase()) ||
+            command.title!.toLowerCase().includes(e.title.toLowerCase())
+          )
+
+          if (matched) {
+            deleteEvent(matched.id)
             setVoiceStatus('success')
-            setLastAction(`已删除事件：${deleted.title}`)
+            setLastAction(`已删除事件：${matched.title}`)
           } else {
-            // 精确匹配失败，找候选项
+            // 当天没找到，扩大到全部事件找候选项
             const fuzzyMatches = events.filter(e =>
               e.title.toLowerCase().includes(command.title!.toLowerCase()) ||
               command.title!.toLowerCase().includes(e.title.toLowerCase())
@@ -193,10 +209,20 @@ export function VoiceCalendar() {
       case 'edit':
         setPendingCommand(null)
         if (command.title) {
-          // 按标题或 ID 匹配原事件
+          // 优先同一天匹配
+          const editCandidates = command.date
+            ? events.filter(e => {
+                const ed = new Date(e.date)
+                const cd = command.date!
+                return ed.getFullYear() === cd.getFullYear() &&
+                  ed.getMonth() === cd.getMonth() &&
+                  ed.getDate() === cd.getDate()
+              })
+            : events
+
           const matched = command.matchedEventId
-            ? events.find(e => e.id === command.matchedEventId)
-            : events.find(e =>
+            ? editCandidates.find(e => e.id === command.matchedEventId)
+            : editCandidates.find(e =>
                 e.title.toLowerCase().includes(command.title!.toLowerCase()) ||
                 command.title!.toLowerCase().includes(e.title.toLowerCase())
               )
