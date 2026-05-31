@@ -36,6 +36,15 @@ function toDateValue(date: Date): string {
   ].join('-')
 }
 
+function shiftTime(t: string, minutes: number): string {
+  const [h, m] = t.split(':').map(Number)
+  const total = h * 60 + m + minutes
+  const clamped = ((total % 1440) + 1440) % 1440
+  const nh = Math.floor(clamped / 60)
+  const nm = clamped % 60
+  return `${nh.toString().padStart(2, '0')}:${nm.toString().padStart(2, '0')}`
+}
+
 export function EventDetailDialog({ event, open, onOpenChange, onSave, onDelete }: EventDetailDialogProps) {
   const [title, setTitle] = useState('')
   const [dateValue, setDateValue] = useState('')
@@ -116,6 +125,24 @@ export function EventDetailDialog({ event, open, onOpenChange, onSave, onDelete 
               <span className="font-medium text-foreground">结束</span>
               <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
             </label>
+          </div>
+
+          <div className="flex flex-wrap gap-1">
+            <span className="text-xs text-muted-foreground mr-1 self-center">快捷调整：</span>
+            {[-15, 15, -30, 30, -60, 60].map(delta => (
+              <Button
+                key={delta}
+                variant="outline"
+                size="sm"
+                className="text-xs h-7 px-2"
+                onClick={() => {
+                  setTime(shiftTime(time, delta))
+                  if (endTime) setEndTime(shiftTime(endTime, delta))
+                }}
+              >
+                {delta > 0 ? '+' : ''}{delta}分
+              </Button>
+            ))}
           </div>
 
           <label className="grid gap-1.5 text-sm">

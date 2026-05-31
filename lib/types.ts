@@ -27,4 +27,7 @@ export interface ParsedCalendarCommand {
   newDate?: Date
   newTime?: string
   newEndTime?: string
+  /** query 专用 */
+  viewScope?: ViewMode
+  keyword?: string
 }

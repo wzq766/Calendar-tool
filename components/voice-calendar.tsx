@@ -148,26 +148,45 @@ export function VoiceCalendar() {
 
       case 'query':
         setPendingCommand(null)
-        if (command.date) {
-          setSelectedDate(command.date)
-          setCurrentMonth(new Date(command.date.getFullYear(), command.date.getMonth(), 1))
-          setViewMode('day')
-          const dayEvents = getEventsForDate(command.date)
+        {
+          const scope = command.viewScope || 'day'
+          const targetDate = command.date || new Date()
+          setSelectedDate(targetDate)
+          setCurrentMonth(new Date(targetDate.getFullYear(), targetDate.getMonth(), 1))
+          setViewMode(scope)
+
+          // 按关键词过滤
+          let relevantEvents: CalendarEvent[] = []
+          if (scope === 'year') {
+            relevantEvents = getEventsForYear(targetDate.getFullYear())
+          } else if (scope === 'month') {
+            relevantEvents = getEventsForMonth(targetDate.getFullYear(), targetDate.getMonth())
+          } else if (scope === 'week') {
+            const day = targetDate.getDay()
+            const ws = new Date(targetDate)
+            ws.setDate(targetDate.getDate() - day)
+            for (let i = 0; i < 7; i++) {
+              const d = new Date(ws)
+              d.setDate(ws.getDate() + i)
+              relevantEvents.push(...getEventsForDate(d))
+            }
+          } else {
+            relevantEvents = getEventsForDate(targetDate)
+          }
+
+          if (command.keyword) {
+            const kw = command.keyword.toLowerCase()
+            relevantEvents = relevantEvents.filter(e =>
+              e.title.toLowerCase().includes(kw) ||
+              (e.description && e.description.toLowerCase().includes(kw))
+            )
+          }
+
+          const count = relevantEvents.length
+          const scopeLabel = scope === 'day' ? '当天' : scope === 'week' ? '本周' : scope === 'month' ? '本月' : '今年'
+          const kwLabel = command.keyword ? `"${command.keyword}"相关` : ''
           setVoiceStatus('success')
-          setLastAction(
-            dayEvents.length > 0
-              ? `找到 ${dayEvents.length} 个事件`
-              : '当天没有安排'
-          )
-        } else {
-          setViewMode('day')
-          const todayEvents = getEventsForDate(new Date())
-          setVoiceStatus('success')
-          setLastAction(
-            todayEvents.length > 0
-              ? `今天有 ${todayEvents.length} 个事件`
-              : '今天没有安排'
-          )
+          setLastAction(count > 0 ? `${scopeLabel}${kwLabel}有 ${count} 个事件` : `${scopeLabel}${kwLabel}没有安排`)
         }
         break
 

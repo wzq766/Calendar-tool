@@ -14,6 +14,9 @@ export interface DeepSeekCalendarCommand {
   newDate?: string
   newTime?: string
   newEndTime?: string
+  /** query 专用 */
+  viewScope?: string
+  keyword?: string
 }
 
 export interface DeepSeekPromptInput {
@@ -141,6 +144,14 @@ function parseSingleCommand(parsed: Record<string, unknown>): DeepSeekCalendarCo
       command.newEndTime = parsed.newEndTime
     }
 
+    // query 专用
+    if (typeof parsed.viewScope === 'string' && ['day','week','month','year'].includes(parsed.viewScope)) {
+      command.viewScope = parsed.viewScope
+    }
+    if (typeof parsed.keyword === 'string' && parsed.keyword.trim()) {
+      command.keyword = parsed.keyword.trim()
+    }
+
     return command
   } catch {
     return null
@@ -169,6 +180,8 @@ export function toParsedCalendarCommand(
     newDate: command.newDate ? toLocalDate(command.newDate) : undefined,
     newTime: command.newTime,
     newEndTime: command.newEndTime,
+    viewScope: (command.viewScope as ParsedCalendarCommand['viewScope']) || undefined,
+    keyword: command.keyword,
   }
 }
 
@@ -204,6 +217,7 @@ export function buildDeepSeekCalendarMessages(input: DeepSeekPromptInput): ChatM
         '信息不确定时把 confidence 设低，但仍尽量提取可确认字段。',
         '【重要】一句话含多个事件时必须用 commands 数组：[{title,time,...}]。单事件用顶层字段。',
         '编辑事件用 action:"edit"：title 是要修改的原事件名（从 existingEvents 匹配），newTitle/newDate/newTime/newEndTime 是修改后的值，未提及的字段不返回。',
+        '查询事件用 action:"query"。date 是查看的日期。viewScope 可选 day/week/month/year 表示查看范围。keyword 可选表示搜索关键词。如"下周有什么安排"→action:"query",viewScope:"week"。',
       ].join('\n'),
     },
     {
